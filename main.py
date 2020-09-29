@@ -4,6 +4,10 @@ import numpy as np
 import sklearn as sk
 import matplotlib as plt
 import seaborn as sns
+import re
+import os
+import tweepy
+import json
 
 ################part1
 import nltk
@@ -49,6 +53,7 @@ df.hist(column='length', by='new_sentiment', bins=50,figsize=(12,11))
 plt.show()
 ###############################part 2
 #Clean the tweets:
+nltk.download('punkt')
 def clean(text):
     text = re.sub(r'@[A-Za-z0–9]+', '', text)
     text = re.sub(r'#', '', text)
