@@ -1,0 +1,2 @@
+[console_scripts]
+clean=clean.cli:cli

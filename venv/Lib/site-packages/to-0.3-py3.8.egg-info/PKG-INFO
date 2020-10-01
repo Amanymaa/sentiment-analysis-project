@@ -1,0 +1,12 @@
+Metadata-Version: 1.1
+Name: to
+Version: 0.3
+Summary: A trainer for PyTorch
+Home-page: https://github.com/chamrc/to
+Author: Jacob Zhang
+Author-email: r.c.cham@gmail.com
+License: UNKNOWN
+Download-URL: https://github.com/chamrc/to/archive/0.3.tar.gz
+Description: UNKNOWN
+Keywords: testing,logging,example
+Platform: UNKNOWN
