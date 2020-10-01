@@ -188,43 +188,22 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 
 bow_transformer = CountVectorizer(analyzer=delstopw).fit(df['Analysis'])
-tweet_bow = bow_transformer.transform(df['Analysis'])
-
-from sklearn.feature_extraction.text import TfidfVectorizer
-vectorizer=TfidfVectorizer(max_features=2500, min_df=7, max_df=0.8, stop_words=stopwords.words('english'))
-tfidf_transformer=vectorizer().fit(tweet_bow)
-tweet_tfidf=tfidf_transformer.transform(tweet_bow)
-
-from sklearn.naive_bayes import MultinomialNB
-
-spam_detect_model = MultinomialNB().fit(tweet_tfidf, df['Analysis'])
-
 # Model Validation
 from sklearn.model_selection import train_test_split
 
 tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(df['tokenized_text'], df['Analysis'],
                                                                             test_size=0.2)
 
-from sklearn.pipeline import Pipeline
-#
-pipeline = Pipeline([
-     ('bow', CountVectorizer(analyzer=clean())),  # strings to token integer counts
-     ('tfidf', vectorizer()),  # integer counts to weighted TF-IDF scores
-     ('classifier', MultinomialNB()),  # train on TF-IDF vectors w/ Naive Bayes classifier
- ])
-
-pipeline.fit(tweet_train, sentiment_train)
-predictions = pipeline.predict(tweet_test)
 #
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 #
-print(classification_report(predictions, sentiment_test))
-print(confusion_matrix(predictions, sentiment_test))
-print(accuracy_score(predictions, sentiment_test))
+# print(classification_report(predictions, sentiment_test))
+# print(confusion_matrix(predictions, sentiment_test))
+# print(accuracy_score(predictions, sentiment_test))
 
 
 # Training the model using CountVectorizer
-bow_transformer = CountVectorizer(analyzer=delstopw).fit(df['Analysis'])
+bow_transformer = CountVectorizer(analyzer=delstopw)
 bow_transformer.fit(tweet_train, sentiment_train)
 tweet_bow = bow_transformer.transform(df['Analysis'])
 
@@ -246,7 +225,7 @@ print(confusion_matrix(predictions, sentiment_test))
 print(accuracy_score(predictions, sentiment_test))
 
 
-# Training the model using MultinomialNB
+# # Training the model using MultinomialNB
 spam_detect_model = MultinomialNB().fit(tweet_tfidf, df['Analysis'])
 spam_detect_model.fit(tweet_train, sentiment_train)
 
