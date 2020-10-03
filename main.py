@@ -1,6 +1,10 @@
 ######sentiment analysis project
 
 import string
+from msilib import sequence
+from sre_parse import Tokenizer
+
+import gensim as gensim
 import pandas as pd
 import numpy as np
 import self as self
@@ -15,7 +19,10 @@ import csv
 import tweepy as tw
 import os
 from nltk import text
+from sklearn import pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MultiLabelBinarizer
 from wordcloud import WordCloud
 from textblob import TextBlob
 import sys
@@ -56,10 +63,9 @@ df.sort_values(by='favorite_count', inplace=True, ascending=False)
 print(df.head())
 print(df.describe())
 df.to_csv('/sentimentAnalysis/joker.csv')
-
+df=pd.read_csv('/sentimentAnalysis/joker.csv')
 tweet_text=df['text']
 print(tweet_text.head())
-print(tweet_text.tail())
 print(df.shape)
 print('\n')
 
@@ -68,7 +74,9 @@ print(len(Tweets))
 print(df.info())
 
 #Let's use groupby to use describe by sentiment
+print('grouping')
 print(df.groupby('text').describe())
+
 #print the first ten tweets
 for tweet_no, tweet in enumerate(df['text'][:10]):
     print(tweet_no,  tweet)
@@ -90,7 +98,7 @@ print(df[df['length'] == 140]['text'].iloc[0])
 #nltk.download('punkt')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
+
 text=df['text']
 def clean(text):
     text = re.sub(r'@[A-Za-z0–9]+', '', text)
@@ -99,7 +107,6 @@ def clean(text):
     text = re.sub(r'https?:\/\/\S+', '', text)
     text = re.sub(r'[^\w\s]','',text)
     text = text.replace(text, text.lower())
-
     return text
 
 def delstopw(t):
@@ -112,6 +119,30 @@ print(df.head())
 readf = df.drop(['text'], axis=1)
 print(readf.head())
 
+# #lemmatize
+# from nltk.stem import WordNetLemmatizer
+# #nltk.download('wordnet')
+# # init lemmatizer
+# lemmatizer = WordNetLemmatizer()
+# #lemmatize
+# words=text
+# lemmatized_words=[lemmatizer.lemmatize(word=word,pos='n') for word in words]
+# lemmatizeddf= pd.DataFrame({'original_word': words,'lemmatized_word': lemmatized_words})
+# lemmatizeddf=lemmatizeddf[['original_word','lemmatized_word']]
+# print(lemmatizeddf.head())
+
+tokenized_text=df['tokenized_text']
+def normalization(tokenized_text):
+
+    lem = nltk.WordNetLemmatizer()
+    normalized_tweet = []
+    for word in text:
+        normalized_text = lem.lemmatize(word, 'v')
+        normalized_tweet.append(normalized_text)
+    return normalized_tweet
+print('norm')
+print(normalization(tokenized_text))
+
 #plot the word cloud
 import matplotlib.pyplot as plt
 allWords=' '.join([tweet for tweet in df['text']])
@@ -120,6 +151,9 @@ plt.imshow(wordCloud,interpolation="bilinear")
 plt.axis("off")
 plt.show()
 
+#stopwords.update(["joker","jokermovie"])
+
+#sentiment analysis:
 #subjectivity
 def getSubjectivity(text):
     return TextBlob(text).sentiment.subjectivity
@@ -143,6 +177,10 @@ def getAnalysis(score):
 df['Analysis']=df['polarity'].apply(getAnalysis)
 print(df.head())
 
+encoded_labels = [1 if label =='positive' else 0 for label in df['Analysis']]
+encoded_labels = np.array(encoded_labels)
+print(encoded_labels)
+
 #plot polarity & subjectivity
 plt.figure(figsize=(8,6))
 for i in range(0,df.shape[0]):
@@ -154,18 +192,24 @@ plt.show()
 #classify sentiment
 df.hist(column='length', by='Analysis', bins=50,figsize=(10,8))
 plt.show()
-
+#people opinion
+print("How people are reacting on JOKER movie by analyzing  100  tweets:" + '\n')
 #positive tweets
 pos_tweets=df[df.Analysis =='positive']
 pos_tweets=pos_tweets['text']
+print('positive tweets are : '+ '\n')
 print(pos_tweets)
-#number of pos_tweets
-print(round((pos_tweets.shape[0] / df.shape[0]) *100 , 1))
-#number of neg_tweets
+#neg tweets
 neg_tweets=df[df.Analysis =='negative']
 neg_tweets=neg_tweets['text']
+print('negative tweets are : '+ '\n')
 print(neg_tweets)
-print(round((neg_tweets.shape[0] / df.shape[0]) *100 , 1))
+#number of pos_tweets
+print('%positive tweets :')
+print(round((pos_tweets.shape[0] / df.shape[0]) *100 , 1))
+#number of neg_tweets
+print('%neg tweets:')
+print(round((neg_tweets.shape[0] / df.shape[0]) *100 , 1) )
 
 #value count
 c=df['Analysis'].value_counts()
@@ -178,68 +222,83 @@ plt.show()
 
 #cleaning is done
 
-# Part #3
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-
+# # Part #3#
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfVectorizer, TfidfTransformer
+from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
-
-bow_transformer = CountVectorizer(analyzer=delstopw).fit(df['Analysis'])
-# Model Validation
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-
-tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(df['tokenized_text'], df['Analysis'],
-                                                                            test_size=0.2)
-
 #
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+# # Vectorization and Model Selection
+bow_transformer = CountVectorizer(analyzer=clean).fit(normalization(tokenized_text))
+tweet_bow = bow_transformer.transform(normalization(tokenized_text))
 #
-# print(classification_report(predictions, sentiment_test))
-# print(confusion_matrix(predictions, sentiment_test))
-# print(accuracy_score(predictions, sentiment_test))
-
-
-# Training the model using CountVectorizer
-bow_transformer = CountVectorizer(analyzer=delstopw)
-bow_transformer.fit(tweet_train, sentiment_train)
-tweet_bow = bow_transformer.transform(df['Analysis'])
-
-predictions = bow_transformer.predict(tweet_test)
-print(classification_report(predictions, sentiment_test))
-print(confusion_matrix(predictions, sentiment_test))
-print(accuracy_score(predictions, sentiment_test))
-
-
-# Training the model using TfidfVectorizer
-vectorizer = TfidfVectorizer(max_features=2500, min_df=7, max_df=0.8, stop_words=stopwords.words('english'))
-vectorizer.fit(tweet_train, sentiment_train)
 tfidf_transformer = TfidfTransformer().fit(tweet_bow)
 tweet_tfidf = tfidf_transformer.transform(tweet_bow)
+#
+# # Using naive bayes classifier
+classifier_model = MultinomialNB().fit(tweet_tfidf,normalization(tokenized_text))
+all_predictions = classifier_model.predict(tweet_tfidf)
+print(classification_report(normalization(tokenized_text),all_predictions))
+print(confusion_matrix(normalization(tokenized_text),all_predictions))
+print(accuracy_score(normalization(tokenized_text),all_predictions))
+#
+#
+# pipeline = Pipeline([
+#     ('bow', CountVectorizer(analyzer=clean)),
+#     ('tfidf', TfidfTransformer()),
+#     ('classifier', MultinomialNB()),
+# ])
 
-predictions = vectorizer.predict(tweet_test)
-print(classification_report(predictions, sentiment_test))
-print(confusion_matrix(predictions, sentiment_test))
-print(accuracy_score(predictions, sentiment_test))
+#
+# # Model Validation
+tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(df['Analysis'], df['tokenized_text'],
+                                                                            test_size=0.2)
+
+# pipeline.fit(tweet_train, sentiment_train)
+# predictions = pipeline.predict(tweet_test)
+# print(classification_report(predictions, sentiment_test))
+#
+# # Using Logistic Regression Classifier
+classifier_model = LogisticRegression().fit(tweet_tfidf,normalization(tokenized_text))
+all_predictions = classifier_model.predict(tweet_tfidf)
+print(classification_report(normalization(tokenized_text),all_predictions))
+print(confusion_matrix(normalization(tokenized_text),all_predictions))
+print(accuracy_score(normalization(tokenized_text),all_predictions))
+#
+pipeline = Pipeline([
+    ('bow', CountVectorizer(analyzer=clean)),
+    ('tfidf', TfidfTransformer()),
+    ('classifier', LogisticRegression()),
+])
+#
+# pipeline.fit(tweet_train, sentiment_train)
+# predictions = pipeline.predict(tweet_test)
+# print(classification_report(predictions, sentiment_test))
 
 
-# # Training the model using MultinomialNB
-spam_detect_model = MultinomialNB().fit(tweet_tfidf, df['Analysis'])
-spam_detect_model.fit(tweet_train, sentiment_train)
 
-predictions = spam_detect_model.predict(tweet_test)
-print(classification_report(predictions, sentiment_test))
-print(confusion_matrix(predictions, sentiment_test))
-print(accuracy_score(predictions, sentiment_test))
+#lets see one of the most positive tweets:
+print(df['text'][7])
 
+rating = round((pos_tweets.shape[0] / (pos_tweets.shape[0] + neg_tweets.shape[0])) * 10)
+if 2.0 > rating >= 0:
+    print("Movie rating = 1 star")
+elif 2 <= rating < 3:
+    print("Movie rating = 2 star")
+elif 3 <= rating < 4:
+    print("Movie rating = 2.5 star")
+elif 4 <= rating < 5:
+    print("Movie_rating = 3 star")
+elif 5 <= rating < 6:
+    print("Movie rating = 3.5 star")
+elif 6 <= rating < 8:
+    print("Movie rating = 4 star")
+elif 8 <= rating < 9:
+    print('Movie rating = 4.5 star')
+elif 9 <= rating <= 10:
+    print("Movie rating = 5 star")
 
-# Training the model using LogisticRegression
-model = LogisticRegression()
-model.fit(tweet_train, sentiment_train)
-
-predictions = model.predict(tweet_test)
-print(classification_report(predictions, sentiment_test))
-print(confusion_matrix(predictions, sentiment_test))
-print(accuracy_score(predictions, sentiment_test))
+# # END OF THE CODE
