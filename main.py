@@ -19,7 +19,7 @@ import csv
 import tweepy as tw
 import os
 from nltk import text
-from sklearn import pipeline
+from sklearn import pipeline, naive_bayes
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -87,7 +87,7 @@ print(df.head())
 
 #Data Visualization
 df['length'] .plot(bins=50, kind='hist')
-plt.show()
+#plt.show()
 
 #comment on the plot about long tweet:we found that the max length is 140
 print(df.length.describe())
@@ -108,7 +108,7 @@ def clean(text):
     text = re.sub(r'[^\w\s]','',text)
     text = text.replace(text, text.lower())
     return text
-
+stopset=set(stopwords.words('english'))
 def delstopw(t):
     return [w for w in t if w not in stopwords.words('english')]
 
@@ -119,18 +119,7 @@ print(df.head())
 readf = df.drop(['text'], axis=1)
 print(readf.head())
 
-# #lemmatize
-# from nltk.stem import WordNetLemmatizer
-# #nltk.download('wordnet')
-# # init lemmatizer
-# lemmatizer = WordNetLemmatizer()
-# #lemmatize
-# words=text
-# lemmatized_words=[lemmatizer.lemmatize(word=word,pos='n') for word in words]
-# lemmatizeddf= pd.DataFrame({'original_word': words,'lemmatized_word': lemmatized_words})
-# lemmatizeddf=lemmatizeddf[['original_word','lemmatized_word']]
-# print(lemmatizeddf.head())
-
+#normalization and limatization
 tokenized_text=df['tokenized_text']
 def normalization(tokenized_text):
 
@@ -140,7 +129,7 @@ def normalization(tokenized_text):
         normalized_text = lem.lemmatize(word, 'v')
         normalized_tweet.append(normalized_text)
     return normalized_tweet
-print('norm')
+print('normalized :')
 print(normalization(tokenized_text))
 
 #plot the word cloud
@@ -149,9 +138,11 @@ allWords=' '.join([tweet for tweet in df['text']])
 wordCloud=WordCloud(width=500,height=300,random_state=21,max_font_size=119).generate(allWords)
 plt.imshow(wordCloud,interpolation="bilinear")
 plt.axis("off")
-plt.show()
+#plt.show()
 
-#stopwords.update(["joker","jokermovie"])
+# stopset=set(stopwords.update(["joker","jokermovie"]))
+# print('stops:')
+# print(stopset)
 
 #sentiment analysis:
 #subjectivity
@@ -177,9 +168,12 @@ def getAnalysis(score):
 df['Analysis']=df['polarity'].apply(getAnalysis)
 print(df.head())
 
+#transform sentiment to binary to use in the model :
 encoded_labels = [1 if label =='positive' else 0 for label in df['Analysis']]
 encoded_labels = np.array(encoded_labels)
 print(encoded_labels)
+df.insert(4,"pos_or_neg",encoded_labels,True)
+print(df["pos_or_neg"].head())
 
 #plot polarity & subjectivity
 plt.figure(figsize=(8,6))
@@ -188,11 +182,11 @@ for i in range(0,df.shape[0]):
 plt.title('Sentiment Analysis')
 plt.xlabel('polarity')
 plt.ylabel('subjectivity')
-plt.show()
+#plt.show()
 #classify sentiment
 df.hist(column='length', by='Analysis', bins=50,figsize=(10,8))
-plt.show()
-#people opinion
+#plt.show()
+
 print("How people are reacting on JOKER movie by analyzing  100  tweets:" + '\n')
 #positive tweets
 pos_tweets=df[df.Analysis =='positive']
@@ -216,73 +210,50 @@ c=df['Analysis'].value_counts()
 plt.xlabel('sentiment')
 plt.ylabel('counts')
 c.plot(kind='bar')
-plt.show()
+#plt.show()
 
 #part #2
 
 #cleaning is done
 
 # # Part #3#
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
-from sklearn.feature_extraction.text import CountVectorizer
+
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, roc_auc_score
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-#
-# # Vectorization and Model Selection
-bow_transformer = CountVectorizer(analyzer=clean).fit(normalization(tokenized_text))
-tweet_bow = bow_transformer.transform(normalization(tokenized_text))
-#
-tfidf_transformer = TfidfTransformer().fit(tweet_bow)
-tweet_tfidf = tfidf_transformer.transform(tweet_bow)
-#
-# # Using naive bayes classifier
-classifier_model = MultinomialNB().fit(tweet_tfidf,normalization(tokenized_text))
-all_predictions = classifier_model.predict(tweet_tfidf)
-print(classification_report(normalization(tokenized_text),all_predictions))
-print(confusion_matrix(normalization(tokenized_text),all_predictions))
-print(accuracy_score(normalization(tokenized_text),all_predictions))
-#
-#
-# pipeline = Pipeline([
-#     ('bow', CountVectorizer(analyzer=clean)),
-#     ('tfidf', TfidfTransformer()),
-#     ('classifier', MultinomialNB()),
-# ])
+vectorizer=TfidfVectorizer(use_idf=True,lowercase=True,strip_accents='ascii',stop_words=stopset)
+x=vectorizer.fit_transform(normalization(tokenized_text))
+y=df.pos_or_neg
+tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(x, y,random_state=42,test_size=0.2)
 
-#
-# # Model Validation
-tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(df['Analysis'], df['tokenized_text'],
-                                                                            test_size=0.2)
+# training naivebayes model
+clf=naive_bayes.MultinomialNB()
+clf.fit(tweet_train,sentiment_train)
+#accuracy using roc_auc
+acc=roc_auc_score(sentiment_test,clf.predict_proba(tweet_test)[:,1])
+print("accuracy of naive model is: " )
+print( acc)
+#accuracy using another method
+classifier_model = MultinomialNB().fit(tweet_train,sentiment_train)
+all_predictions = classifier_model.predict(tweet_test)
+print(classification_report(all_predictions,sentiment_test))
+print(confusion_matrix(all_predictions,sentiment_test))
+print(accuracy_score(all_predictions,sentiment_test))
+# # #
 
-# pipeline.fit(tweet_train, sentiment_train)
-# predictions = pipeline.predict(tweet_test)
-# print(classification_report(predictions, sentiment_test))
-#
 # # Using Logistic Regression Classifier
-classifier_model = LogisticRegression().fit(tweet_tfidf,normalization(tokenized_text))
-all_predictions = classifier_model.predict(tweet_tfidf)
-print(classification_report(normalization(tokenized_text),all_predictions))
-print(confusion_matrix(normalization(tokenized_text),all_predictions))
-print(accuracy_score(normalization(tokenized_text),all_predictions))
-#
-pipeline = Pipeline([
-    ('bow', CountVectorizer(analyzer=clean)),
-    ('tfidf', TfidfTransformer()),
-    ('classifier', LogisticRegression()),
-])
-#
-# pipeline.fit(tweet_train, sentiment_train)
-# predictions = pipeline.predict(tweet_test)
-# print(classification_report(predictions, sentiment_test))
+classifier_model = LogisticRegression().fit(tweet_train,sentiment_train)
+all_predictions = classifier_model.predict(tweet_test)
+print("logistic Regression score is:")
+print(classification_report(all_predictions,sentiment_test))
+print(confusion_matrix(all_predictions,sentiment_test))
+print(accuracy_score(all_predictions,sentiment_test))
 
-
-
-#lets see one of the most positive tweets:
-print(df['text'][7])
-
+#Rating Joker movie:
 rating = round((pos_tweets.shape[0] / (pos_tweets.shape[0] + neg_tweets.shape[0])) * 10)
 if 2.0 > rating >= 0:
     print("Movie rating = 1 star")
