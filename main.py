@@ -28,10 +28,10 @@ plt.style.use('fivethirtyeight')
 #nltk.download_shell()
 #API
 import oauth
-consumer_key ="EKyhdaxa4KDaxt5H1t2YC95A2"
-consumer_secret="dEkQ7InFpwnysztkkMnw72AywCCzmrPhvAAbIzIwRyk64bnyPR"
-access_token="1268668361275293697-0PIOK5bKUtW2BX50tHnSIQQgNyRCmg"
-access_token_secret = "vKt1qyOzEmeEXJ3be78gvrivB081Rs23PPUyiAzNfyZm2"
+consumer_key =""
+consumer_secret=""
+access_token=""
+access_token_secret = ""
 
 auth =tw.OAuthHandler(consumer_key,consumer_secret)
 auth.set_access_token(access_token,access_token_secret)
