@@ -35,25 +35,30 @@ plt.style.use('fivethirtyeight')
 #nltk.download_shell()
 #API
 import oauth
-consumer_key ="EKyhdaxa4KDaxt5H1t2YC95A2"
-consumer_secret="dEkQ7InFpwnysztkkMnw72AywCCzmrPhvAAbIzIwRyk64bnyPR"
-access_token="1268668361275293697-0PIOK5bKUtW2BX50tHnSIQQgNyRCmg"
-access_token_secret = "vKt1qyOzEmeEXJ3be78gvrivB081Rs23PPUyiAzNfyZm2"
+consumer_key =""
+consumer_secret=""
+access_token=""
+access_token_secret = ""
 
 auth =tw.OAuthHandler(consumer_key,consumer_secret)
 auth.set_access_token(access_token,access_token_secret)
 api =tw.API(auth,wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
-# Instantiate an object
+
 joker_tweets = Twython(consumer_key, consumer_secret)
+
 # Create our query
-query = {'q': '#jokermovie',
-        'count': 100,
-        'lang': 'en',
-        }
+max_id="1312763298098667525"
+max_iters=10
+for call in range(0,max_iters):
+    query = {'q': '#jokermovie',
+            'count': 100,
+            'lang': 'en',
+            'max_id': max_id
+            }
 # Search tweets
-dict_ = {'user': [], 'date': [], 'text': [], 'favorite_count': []}
+dict_ = {'id': [], 'date': [], 'text': [], 'favorite_count': []}
 for status in joker_tweets.search(**query)['statuses']:
-    dict_['user'].append(status['user']['screen_name'])
+    dict_['id'].append(status['id'])
     dict_['date'].append(status['created_at'])
     dict_['text'].append(status['text'])
     dict_['favorite_count'].append(status['favorite_count'])
@@ -140,10 +145,6 @@ plt.imshow(wordCloud,interpolation="bilinear")
 plt.axis("off")
 #plt.show()
 
-# stopset=set(stopwords.update(["joker","jokermovie"]))
-# print('stops:')
-# print(stopset)
-
 #sentiment analysis:
 #subjectivity
 def getSubjectivity(text):
@@ -223,7 +224,6 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 vectorizer=TfidfVectorizer(use_idf=True,lowercase=True,strip_accents='ascii',stop_words=stopset)
 x=vectorizer.fit_transform(normalization(tokenized_text))
@@ -233,11 +233,8 @@ tweet_train, tweet_test, sentiment_train, sentiment_test = train_test_split(x, y
 # training naivebayes model
 clf=naive_bayes.MultinomialNB()
 clf.fit(tweet_train,sentiment_train)
-#accuracy using roc_auc
-acc=roc_auc_score(sentiment_test,clf.predict_proba(tweet_test)[:,1])
+#accuracy
 print("accuracy of naive model is: " )
-print( acc)
-#accuracy using another method
 classifier_model = MultinomialNB().fit(tweet_train,sentiment_train)
 all_predictions = classifier_model.predict(tweet_test)
 print(classification_report(all_predictions,sentiment_test))
